@@ -1,0 +1,44 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<div style="width: 100%; height: 100%; display: flex; flex-direction: row;">
+    <div style="user-select: none; background: lightgray; color: black; font-family: monospace; font-size: 0.95em; padding: 0.5em 0.3em 0.5em 0.5em; text-align: right; min-width: 2.5em; height: 100%; overflow: hidden; border-right: 1px solid #ddd;">
+        @foreach (var line in GetLineNumbers(Value))
+        {
+            <div>@line</div>
+        }
+    </div>
+    <FluentTextArea Id="@Id" Name="@Name" Rows="@CountLines(Value)" Style="@StyleString" @bind-Value="Value" @oninput="HandleInput" ReadOnly="@ReadOnly" Resize="@Resize"></FluentTextArea>
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> OnInput { get; set; }
+    [Parameter] public bool ReadOnly { get; set; } = false;
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public TextAreaResize Resize { get; set; } = TextAreaResize.Vertical;
+
+    private int CountLines(string? text)
+    {
+        var str = text ?? string.Empty;
+        return str.Split('\n').Length;
+    }
+    private IEnumerable<int> GetLineNumbers(string? text)
+    {
+        int count = CountLines(text);
+        for (int i = 1; i <= count; i++)
+        {
+            yield return i;
+        }
+    }
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        if (OnInput.HasDelegate)
+        {
+            await OnInput.InvokeAsync(e.Value?.ToString() ?? string.Empty);
+        }
+    }
+    private string StyleString =>
+        $"flex: 1 1 0; width: 100%; height: 100%; min-width: 0; min-height: 0; box-sizing: border-box; border-left: none;{(string.IsNullOrWhiteSpace(Style) ? string.Empty : " " + Style)}";
+}

@@ -1,0 +1,274 @@
+
+@page "/DataDifference"
+@using Microsoft.JSInterop
+@using System.Text.Json
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using DeveloperTools.Pages.Tools.DataDifference
+@using static DeveloperTools.Pages.Tools.DataDifference.DataDifference
+@inject IJSRuntime JS
+
+<PageTitle>Data Difference Page</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 1.25rem; width: 100%;">
+	<FluentStack Orientation="Orientation.Horizontal" Style="gap: 1rem; align-items: end; flex-wrap: wrap;">
+		<div>
+			<FluentLabel>Mode</FluentLabel>
+			<FluentSelect TOption="string" @bind-Value="SelectedMode">
+				<FluentOption TOption="string" Value="Text">Text</FluentOption>
+				<FluentOption TOption="string" Value="Json">JSON</FluentOption>
+			</FluentSelect>
+		</div>
+
+		@if (selectedMode == "Text")
+		{
+			<FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+				<FluentCheckbox @bind-Value="IgnoreCase">Ignore case</FluentCheckbox>
+				<FluentCheckbox @bind-Value="IgnoreWhitespace">Ignore whitespace</FluentCheckbox>
+				<FluentCheckbox @bind-Value="TrimLines">Trim lines</FluentCheckbox>
+				<FluentCheckbox @bind-Value="ShowUnchanged">Show unchanged</FluentCheckbox>
+			</FluentStack>
+		}
+		else
+		{
+			<FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+				<FluentCheckbox @bind-Value="JsonPretty">Pretty print values</FluentCheckbox>
+				<FluentCheckbox @bind-Value="JsonSortProps">Sort object keys</FluentCheckbox>
+				<FluentCheckbox @bind-Value="JsonShowUnchanged">Show unchanged</FluentCheckbox>
+			</FluentStack>
+		}
+
+		<FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem; flex-wrap: wrap;">
+			<FluentButton Appearance="Appearance.Accent" OnClick="SwapInputs">Swap</FluentButton>
+			<FluentButton Appearance="Appearance.Outline" OnClick="ClearInputs">Clear</FluentButton>
+			@if (selectedMode == "Json")
+			{
+				<FluentButton OnClick="FormatJsonLeft">Format left JSON</FluentButton>
+				<FluentButton OnClick="FormatJsonRight">Format right JSON</FluentButton>
+			}
+		</FluentStack>
+	</FluentStack>
+
+	<FluentStack Orientation="Orientation.Horizontal" Style="gap: 1rem; align-items: stretch; min-height: 0; height: auto;">
+		<div class="panel">
+			<FluentLabel>Left</FluentLabel>
+			<NumberedTextArea Id="LeftInput" Name="LeftInput" Value="@leftInput" OnInput="HandleLeftInput"/>
+		</div>
+		<div class="panel">
+			<FluentLabel>Right</FluentLabel>
+			<NumberedTextArea Id="RightInput" Name="RightInput" Value="@rightInput"  OnInput="HandleRightInput"/>
+		</div>
+	</FluentStack>
+
+	@if (!string.IsNullOrEmpty(errorMessage))
+	{
+		<FluentMessageBar Intent="MessageIntent.Error">@errorMessage</FluentMessageBar>
+	}
+
+	<FluentStack Orientation="Orientation.Vertical" Style="gap: 0.5rem; align-items: stretch;">
+		<FluentStack Orientation="Orientation.Horizontal" Style="justify-content: space-between; align-items: center;">
+			<FluentLabel>Difference</FluentLabel>
+			<FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem;">
+				<FluentButton OnClick="CopyDiffToClipboard">Copy</FluentButton>
+			</FluentStack>
+		</FluentStack>
+
+		<FluentCard Style="padding: 0;">
+			<div class="diff-container" @onkeydown="HandleKeyDown">
+				@if (diffLines.Count == 0)
+				{
+					<div class="diff-empty">No differences.</div>
+				}
+				else
+				{
+					@foreach (var line in diffLines)
+					{
+						var cls = line.Kind switch
+						{
+							DataDifference.DiffKind.Added => "diff-line added",
+							DataDifference.DiffKind.Removed => "diff-line removed",
+							_ => "diff-line equal"
+						};
+						<div class="@cls">@line.Text</div>
+					}
+				}
+			</div>
+		</FluentCard>
+	</FluentStack>
+
+</FluentStack>
+
+@code {
+	private string leftInput = string.Empty;
+	private string rightInput = string.Empty;
+	private string selectedMode = "Text";
+	private string diffResult = string.Empty;
+	private List<DataDifference.DiffLine> diffLines = new();
+	private string? errorMessage = null;
+
+	// Options - Text
+	private bool ignoreCase = false;
+	private bool ignoreWhitespace = false;
+	private bool trimLines = false;
+	private bool showUnchanged = true;
+	// Options - JSON
+	private bool jsonPretty = true;
+	private bool jsonSortProps = true;
+	private bool jsonShowUnchanged = false;
+
+	// Property-backed bindings to trigger recompute
+	private string SelectedMode { get => selectedMode; set { if (selectedMode != value) { selectedMode = value; ComputeDiff(); } } }
+	private bool IgnoreCase { get => ignoreCase; set { if (ignoreCase != value) { ignoreCase = value; ComputeDiff(); } } }
+	private bool IgnoreWhitespace { get => ignoreWhitespace; set { if (ignoreWhitespace != value) { ignoreWhitespace = value; ComputeDiff(); } } }
+	private bool TrimLines { get => trimLines; set { if (trimLines != value) { trimLines = value; ComputeDiff(); } } }
+	private bool ShowUnchanged { get => showUnchanged; set { if (showUnchanged != value) { showUnchanged = value; ComputeDiff(); } } }
+	private bool JsonPretty { get => jsonPretty; set { if (jsonPretty != value) { jsonPretty = value; ComputeDiff(); } } }
+	private bool JsonSortProps { get => jsonSortProps; set { if (jsonSortProps != value) { jsonSortProps = value; ComputeDiff(); } } }
+	private bool JsonShowUnchanged { get => jsonShowUnchanged; set { if (jsonShowUnchanged != value) { jsonShowUnchanged = value; ComputeDiff(); } } }
+
+	   private void HandleLeftInput(string v)
+	   {
+		   leftInput = v;
+		   ComputeDiff();
+	   }
+
+	   private void HandleRightInput(string v)
+	   {
+		   rightInput = v;
+		   ComputeDiff();
+	   }
+
+	protected override void OnInitialized()
+	{
+		ComputeDiff();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		   if (firstRender)
+		   {
+			   try
+			   {
+				   leftInput = await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.Left") ?? leftInput;
+				   rightInput = await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.Right") ?? rightInput;
+				   selectedMode = await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.Mode") ?? selectedMode;
+				   ignoreCase = (await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.IgnoreCase")) == "1";
+				   ignoreWhitespace = (await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.IgnoreWhitespace")) == "1";
+				   trimLines = (await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.TrimLines")) == "1";
+				   showUnchanged = (await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.ShowUnchanged")) != "0";
+
+				   jsonPretty = (await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.JsonPretty")) != "0";
+				   jsonSortProps = (await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.JsonSortProps")) != "0";
+				   jsonShowUnchanged = (await JS.InvokeAsync<string?>("localStorage.getItem", "DataDiff.JsonShowUnchanged")) == "1";
+			   }
+			   catch { }
+
+			   ComputeDiff();
+			   StateHasChanged();
+		   }
+	}
+
+
+
+	private void ComputeDiff()
+	{
+		errorMessage = null;
+		if (selectedMode == "Json")
+		{
+			try
+			{
+				var leftText = string.IsNullOrWhiteSpace(leftInput) ? "{}" : leftInput;
+				var rightText = string.IsNullOrWhiteSpace(rightInput) ? "{}" : rightInput;
+				using var leftJson = JsonDocument.Parse(leftText);
+				using var rightJson = JsonDocument.Parse(rightText);
+				(diffResult, diffLines) = DataDifference.GetJsonDiff(leftJson.RootElement, rightJson.RootElement, jsonPretty, jsonSortProps, jsonShowUnchanged);
+			}
+			catch (JsonException ex)
+			{
+				errorMessage = $"Invalid JSON: {ex.Message}";
+				diffResult = string.Empty;
+				diffLines = new();
+			}
+		}
+		else
+		{
+			(diffResult, diffLines) = DataDifference.GetTextDiff(leftInput, rightInput, ignoreCase, ignoreWhitespace, trimLines, showUnchanged);
+		}
+		StateHasChanged();
+		_ = SaveState();
+	}
+
+	private async Task CopyDiffToClipboard()
+	{
+		if (!string.IsNullOrEmpty(diffResult))
+		{
+			await JS.InvokeVoidAsync("navigator.clipboard.writeText", diffResult);
+		}
+	}
+
+	private async Task SaveState()
+	{
+		try
+		{
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.Left", leftInput ?? string.Empty);
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.Right", rightInput ?? string.Empty);
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.Mode", selectedMode);
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.IgnoreCase", ignoreCase ? "1" : "0");
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.IgnoreWhitespace", ignoreWhitespace ? "1" : "0");
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.TrimLines", trimLines ? "1" : "0");
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.ShowUnchanged", showUnchanged ? "1" : "0");
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.JsonPretty", jsonPretty ? "1" : "0");
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.JsonSortProps", jsonSortProps ? "1" : "0");
+			await JS.InvokeVoidAsync("localStorage.setItem", "DataDiff.JsonShowUnchanged", jsonShowUnchanged ? "1" : "0");
+		}
+		catch { }
+	}
+
+    
+
+	private async Task SwapInputs()
+	{
+		(leftInput, rightInput) = (rightInput, leftInput);
+		ComputeDiff();
+		await SaveState();
+	}
+
+	private async Task ClearInputs()
+	{
+		leftInput = string.Empty;
+		rightInput = string.Empty;
+		ComputeDiff();
+		await SaveState();
+	}
+
+	private void FormatJsonLeft()
+	{
+		if (string.IsNullOrWhiteSpace(leftInput)) return;
+		try
+		{
+			using var doc = JsonDocument.Parse(leftInput);
+			leftInput = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+			ComputeDiff();
+		}
+		catch (JsonException ex) { errorMessage = $"Left JSON invalid: {ex.Message}"; }
+	}
+
+	private void FormatJsonRight()
+	{
+		if (string.IsNullOrWhiteSpace(rightInput)) return;
+		try
+		{
+			using var doc = JsonDocument.Parse(rightInput);
+			rightInput = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+			ComputeDiff();
+		}
+		catch (JsonException ex) { errorMessage = $"Right JSON invalid: {ex.Message}"; }
+	}
+
+	private void HandleKeyDown(KeyboardEventArgs e)
+	{
+		if (e.CtrlKey && e.Key == "a")
+		{
+		}
+	}
+}

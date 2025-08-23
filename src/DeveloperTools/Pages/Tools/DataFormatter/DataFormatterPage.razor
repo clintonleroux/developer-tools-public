@@ -1,37 +1,68 @@
-@page "/DataFormatter"
+@using DeveloperTools
 @using static DeveloperTools.Pages.Tools.DataFormatter.DataFormatter
 @inject DataFormatter DataFormatterService
+@page "/DataFormatter"
 <PageTitle>Data Formatter</PageTitle>
 
-<FluentSelect TOption="string" @bind-Value="selectedFormatString">
-    <FluentOption TOption="string" Value="Json">Json</FluentOption>
-    <FluentOption TOption="string" Value="Sql">SQL</FluentOption>
-    <FluentOption TOption="string" Value="Text">Text</FluentOption>
-    <FluentOption TOption="string" Value="StackTrace">Stack Trace</FluentOption>
-</FluentSelect>
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 0.5rem;">
+    <div style="display:flex; gap: 0.75rem; align-items:center; flex-wrap: wrap;">
+    <FluentSelect TOption="string" @bind-Value="selectedFormatString">
+            <FluentOption TOption="string" Value="Json">Json</FluentOption>
+            <FluentOption TOption="string" Value="Xml">XML</FluentOption>
+            <FluentOption TOption="string" Value="Yaml">YAML</FluentOption>
+            <FluentOption TOption="string" Value="Sql">SQL</FluentOption>
+            <FluentOption TOption="string" Value="Text">Text</FluentOption>
+            <FluentOption TOption="string" Value="StackTrace">Stack Trace</FluentOption>
+        </FluentSelect>
 
-@if (selectedFormat == FormatType.Json)
-{
-    <div style="margin: 0.5em 0;">
-        <FluentSwitch @bind-Value="sortJsonKeys" @onchange="@(e => OnSortChanged(sortJsonKeys))">
-            <span>Sort Keys</span>
-        </FluentSwitch>
+    @if (selectedFormat == FormatType.Json)
+        {
+            <div style="display:flex; gap: 1rem; align-items:center;">
+        <FluentSwitch @bind-Value="sortJsonKeys">
+                    <span>Sort Keys</span>
+                </FluentSwitch>
+        <FluentSwitch @bind-Value="minifyJson">
+                    <span>Minify</span>
+                </FluentSwitch>
+            </div>
+        }
+
+        <div style="margin-left:auto; display:flex; gap: 0.5rem;">
+            <FluentButton OnClick="ClearInput">Clear</FluentButton>
+            <FluentButton OnClick="CopyOutputToClipboard">Copy Output</FluentButton>
+        </div>
     </div>
-}
 
-<FluentLabel for="DataInput">Input</FluentLabel>
-<FluentTextArea Id="DataInput" Name="DataInput" Rows="10" Cols="50" @bind-Value="inputData"
-    @oninput="eventArgs => FormatData(eventArgs.Value?.ToString() ?? string.Empty)"></FluentTextArea>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <FluentMessageBar Intent="MessageIntent.Error">@errorMessage</FluentMessageBar>
+    }
 
-<FluentLabel for="DataOutput">Output</FluentLabel>
-<FluentTextArea Id="DataOutput" Name="DataOutput" @bind-Value="formattedData" Rows="10" Cols="50"></FluentTextArea>
+    <FluentStack Orientation="Orientation.Horizontal" Style="gap: 3em; align-items: stretch; min-height: 0; height: auto;">
+        <div style="width: 33.33vw; min-width: 200px; height: 100%; display: flex; flex-direction: column; align-items: flex-start;">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; height:3vh">
+                <FluentLabel for="DataInput">Input</FluentLabel>
+            </div>
+            <NumberedTextArea Id="DataInput" Name="DataInput" Value="@inputData" OnInput="@(v => FormatData(v))"/>
+        </div>
+        <div style="width: 33.33vw; min-width: 200px; height: 100%; display: flex; flex-direction: column; align-items: flex-start;">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; height: 3vh">
+                <FluentLabel for="DataOutput">Output</FluentLabel>
+            </div>
+            <NumberedTextArea Id="DataOutput" Name="DataOutput" Value="@formattedData" ReadOnly="true"/>
+        </div>
+    </FluentStack>
+</FluentStack>
 
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <FluentMessageBar Intent="MessageIntent.Error">@errorMessage</FluentMessageBar>
-}
+@inject IJSRuntime JS
 
 @code {
+    private const string StoragePrefix = "DataFormatter.";
+    private const string StorageInput = StoragePrefix + "Input";
+    private const string StorageFormat = StoragePrefix + "SelectedFormat";
+    private const string StorageSort = StoragePrefix + "SortKeys";
+    private const string StorageMinify = StoragePrefix + "Minify";
+
     private string inputData = string.Empty;
     private FormatType selectedFormat = FormatType.Json;
     private string selectedFormatString
@@ -40,29 +71,103 @@
         set
         {
             selectedFormat = Enum.Parse<FormatType>(value);
+            _ = JS.InvokeVoidAsync("localStorage.setItem", StorageFormat, value);
             FormatData(inputData);
         }
     }
     private string? formattedData = null;
     private string? errorMessage = null;
-    private bool sortJsonKeys = false;
+    private bool _sortJsonKeys = false;
+    private bool _minifyJson = false;
 
-    private void OnSortChanged(bool value)
+    private bool sortJsonKeys
     {
-        sortJsonKeys = !value;
+        get => _sortJsonKeys;
+        set
+        {
+            if (_sortJsonKeys == value) return;
+            _sortJsonKeys = value;
+            _ = JS.InvokeVoidAsync("localStorage.setItem", StorageSort, _sortJsonKeys.ToString());
+            FormatData(inputData);
+        }
+    }
+
+    private bool minifyJson
+    {
+        get => _minifyJson;
+        set
+        {
+            if (_minifyJson == value) return;
+            _minifyJson = value;
+            _ = JS.InvokeVoidAsync("localStorage.setItem", StorageMinify, _minifyJson.ToString());
+            FormatData(inputData);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var savedFormat = await JS.InvokeAsync<string?>("localStorage.getItem", StorageFormat);
+        if (!string.IsNullOrWhiteSpace(savedFormat) && Enum.TryParse<FormatType>(savedFormat, out var f))
+        {
+            selectedFormat = f;
+        }
+
+        var savedSort = await JS.InvokeAsync<string?>("localStorage.getItem", StorageSort);
+        if (bool.TryParse(savedSort, out var s))
+        {
+            _sortJsonKeys = s; // assign backing field to avoid triggering FormatData twice during initial load
+        }
+
+        var savedMin = await JS.InvokeAsync<string?>("localStorage.getItem", StorageMinify);
+        if (bool.TryParse(savedMin, out var m))
+        {
+            _minifyJson = m; // assign backing field to avoid triggering FormatData twice during initial load
+        }
+
+        var savedInput = await JS.InvokeAsync<string?>("localStorage.getItem", StorageInput);
+        if (!string.IsNullOrEmpty(savedInput))
+        {
+            inputData = savedInput;
+        }
+
         FormatData(inputData);
+        StateHasChanged();
+    }
+
+    private async Task CopyOutputToClipboard()
+    {
+        if (!string.IsNullOrEmpty(formattedData))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", formattedData);
+        }
+    }
+
+    private Task ClearInput()
+    {
+        inputData = string.Empty;
+        formattedData = string.Empty;
+        errorMessage = null;
+        _ = JS.InvokeVoidAsync("localStorage.setItem", StorageInput, inputData);
+        return Task.CompletedTask;
     }
 
     private void FormatData(string data)
     {
         inputData = data;
+        _ = JS.InvokeVoidAsync("localStorage.setItem", StorageInput, inputData);
+
         string? result;
         string? error;
 
         switch (selectedFormat)
         {
             case FormatType.Json:
-                result = DataFormatterService.FormatJson(data, out error, sortJsonKeys);
+                result = DataFormatterService.FormatJson(data, out error, sortJsonKeys, minifyJson);
                 break;
             default:
                 result = DataFormatterService.FormatData(data, selectedFormat, out error);

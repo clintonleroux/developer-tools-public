@@ -1,0 +1,61 @@
+/* Scoped styles for Home.razor */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--neutral-foreground-hint, #6b7280);
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.tool-card {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--neutral-stroke-rest, rgba(0,0,0,0.08));
+  border-radius: 8px;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+  aspect-ratio: 1 / 1;
+}
+
+.tool-card:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
+  transform: translateY(-2px);
+}
+
+.tool-card h3 {
+  margin: 0;
+  text-align: center;
+}
+
+.actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tile-action {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* Column spans are handled by auto-fit; no explicit media queries needed. */

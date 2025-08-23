@@ -64,5 +64,68 @@ public class DataFormatterTests
         Assert.Null(error);
         Assert.Equal("SELECT *\n FROM table\n WHERE id=1\n ORDER BY name", result);
     }
+
+    [Fact]
+    public void FormatJson_Minify_ReturnsSingleLine()
+    {
+        var formatter = new DataFormatter();
+        string input = "{\"name\":\"Alice\"}";
+
+        var result = formatter.FormatJson(input, out var error, sortKeys: false, minify: true);
+
+        Assert.Null(error);
+        Assert.Equal("{\"name\":\"Alice\"}", result);
+    }
+
+    [Fact]
+    public void FormatXml_PrettifiesCompactXml()
+    {
+        var formatter = new DataFormatter();
+        var input = "<root><a>1</a><b>2</b></root>";
+
+        var result = formatter.FormatXml(input, out var error);
+
+        Assert.Null(error);
+        Assert.Equal("<?xml version=\"1.0\" encoding=\"utf-16\"?>\n<root>\n  <a>1</a>\n  <b>2</b>\n</root>", result);
+    }
+
+    [Fact]
+    public void FormatXml_ReturnsError_OnInvalidXml()
+    {
+        var formatter = new DataFormatter();
+    var input = "<root><a>1</root>";
+
+        var result = formatter.FormatXml(input, out var error);
+
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.StartsWith("Invalid XML", error);
+    }
+
+    [Fact]
+    public void FormatYaml_PreservesSimpleStructure()
+    {
+        var formatter = new DataFormatter();
+        var input = "name: Alice\nage: 30";
+
+        var result = formatter.FormatYaml(input, out var error);
+
+        Assert.Null(error);
+        Assert.Contains("name: Alice", result);
+        Assert.Contains("age: 30", result);
+    }
+
+    [Fact]
+    public void FormatYaml_ReturnsError_OnInvalidYaml()
+    {
+        var formatter = new DataFormatter();
+    var input = "name: Alice\nage: : 30";
+
+        var result = formatter.FormatYaml(input, out var error);
+
+        Assert.Null(result);
+        Assert.NotNull(error);
+        Assert.StartsWith("Invalid YAML:", error);
+    }
 }
 

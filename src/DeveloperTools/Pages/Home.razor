@@ -1,7 +1,88 @@
 @page "/"
 
-<PageTitle>Home</PageTitle>
+@using System.Reflection
+@using Microsoft.AspNetCore.Components
 
-<h1>Hello, world!</h1>
+@inject NavigationManager Nav
 
-Welcome to your new app.
+<PageTitle>Developer Tools</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 1.25rem; max-width: 1200px; margin: 0 auto;">
+	<div class="hero">
+		<h1 class="title">Developer Tools</h1>
+		<p class="subtitle">A collection of handy, fast, and accessible utilities built with Fluent UI.</p>
+
+		@if (TopThreeTools.Count > 0)
+		{
+			<FluentStack Orientation="Orientation.Horizontal" Style="gap: 0.5rem; flex-wrap: wrap;">
+				@foreach (var t in TopThreeTools)
+				{
+					<FluentButton Appearance="Appearance.Accent" OnClick="() => Open(t.Route)">@t.Name</FluentButton>
+				}
+			</FluentStack>
+		}
+	</div>
+
+	<FluentMessageBar Intent="MessageIntent.Info">Pick a tool below to get started.</FluentMessageBar>
+
+	<div class="tool-grid">
+		@foreach (var tool in Tools)
+		{
+			<FluentCard class="tool-card">
+				<h3>@tool.Name</h3>
+				<button class="tile-action" title="Open" aria-label="Open @tool.Name" @onclick="() => Open(tool.Route)"></button>
+			</FluentCard>
+		}
+	</div>
+</FluentStack>
+
+@code {
+	private record ToolInfo(string Name, string Route);
+
+	private List<ToolInfo> Tools { get; set; } = new();
+	private List<ToolInfo> TopThreeTools { get; set; } = new();
+
+	protected override void OnInitialized()
+	{
+		// Discover all pages with [Route] in the Tools namespace
+		var asm = Assembly.GetExecutingAssembly();
+		var routeAttrType = typeof(RouteAttribute);
+
+		var discovered = asm
+			.GetTypes()
+			.Where(t => t.IsSubclassOf(typeof(ComponentBase))
+						&& !string.IsNullOrEmpty(t.Namespace)
+						&& t.Namespace!.Contains(".Pages.Tools.", StringComparison.Ordinal))
+			.SelectMany(t => t.GetCustomAttributes<RouteAttribute>()
+							   .Select(attr => new { Type = t, Route = attr.Template }))
+			.Where(x => !string.IsNullOrWhiteSpace(x.Route) && x.Route!.StartsWith("/"))
+			.Select(x => new ToolInfo(
+				ToDisplayName(x.Route!.Trim('/')),
+				x.Route!
+			))
+			.GroupBy(t => t.Route)
+			.Select(g => g.First()) // de-duplicate by route
+			.OrderBy(t => t.Name)
+			.ToList();
+
+		Tools = discovered;
+		TopThreeTools = Tools.Take(3).ToList();
+	}
+
+	private void Open(string route) => Nav.NavigateTo(route);
+
+	private static readonly System.Text.RegularExpressions.Regex PascalCaseRegex =
+		new System.Text.RegularExpressions.Regex("(?<!^)([A-Z])", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+	private static string ToDisplayName(string routeSegment)
+	{
+		// Convert PascalCase to "Pascal Case" if present, else TitleCase
+		if (string.IsNullOrWhiteSpace(routeSegment)) return "Tool";
+		var s = routeSegment;
+		// Insert spaces before capitals (but not at start)
+		var withSpaces = PascalCaseRegex.Replace(s, " $1");
+		return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(withSpaces.Replace('-', ' '));
+	}
+
+
+}
