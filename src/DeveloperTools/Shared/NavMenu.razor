@@ -1,0 +1,13 @@
+
+@using static Microsoft.FluentUI.AspNetCore.Components.Icons.Filled.Size20
+@using Icon = Microsoft.FluentUI.AspNetCore.Components.Icons.Filled.Size20
+<FluentNavMenu @bind-Expanded="_expanded" Width="250" Collapsible="true" CollapsedChildNavigation="_enableCollapsedChildNavigation">
+    <FluentNavLink Href="/" Icon="@(new Icon.Home())">Home</FluentNavLink>
+    <FluentNavLink Href="/DataFormatter" Icon="@(new Icon.Code())">Data Formatter</FluentNavLink>
+</FluentNavMenu>
+
+@code
+{
+    bool _expanded = true;
+    bool _enableCollapsedChildNavigation = true;
+}

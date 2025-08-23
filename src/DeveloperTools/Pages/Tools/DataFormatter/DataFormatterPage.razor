@@ -1,0 +1,83 @@
+@page "/DataFormatter"
+@using static DeveloperTools.Pages.Tools.DataFormatter.DataFormatter
+@inject DataFormatter DataFormatterService
+<PageTitle>Data Formatter</PageTitle>
+
+<FluentSelect TOption="string" @bind-Value="selectedFormatString">
+    <FluentOption TOption="string" Value="Json">Json</FluentOption>
+    <FluentOption TOption="string" Value="Sql">SQL</FluentOption>
+    <FluentOption TOption="string" Value="Text">Text</FluentOption>
+    <FluentOption TOption="string" Value="StackTrace">Stack Trace</FluentOption>
+</FluentSelect>
+
+@if (selectedFormat == FormatType.Json)
+{
+    <div style="margin: 0.5em 0;">
+        <FluentSwitch @bind-Value="sortJsonKeys" @onchange="@(e => OnSortChanged(sortJsonKeys))">
+            <span>Sort Keys</span>
+        </FluentSwitch>
+    </div>
+}
+
+<FluentLabel for="DataInput">Input</FluentLabel>
+<FluentTextArea Id="DataInput" Name="DataInput" Rows="10" Cols="50" @bind-Value="inputData"
+    @oninput="eventArgs => FormatData(eventArgs.Value?.ToString() ?? string.Empty)"></FluentTextArea>
+
+<FluentLabel for="DataOutput">Output</FluentLabel>
+<FluentTextArea Id="DataOutput" Name="DataOutput" @bind-Value="formattedData" Rows="10" Cols="50"></FluentTextArea>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <FluentMessageBar Intent="MessageIntent.Error">@errorMessage</FluentMessageBar>
+}
+
+@code {
+    private string inputData = string.Empty;
+    private FormatType selectedFormat = FormatType.Json;
+    private string selectedFormatString
+    {
+        get => selectedFormat.ToString();
+        set
+        {
+            selectedFormat = Enum.Parse<FormatType>(value);
+            FormatData(inputData);
+        }
+    }
+    private string? formattedData = null;
+    private string? errorMessage = null;
+    private bool sortJsonKeys = false;
+
+    private void OnSortChanged(bool value)
+    {
+        sortJsonKeys = !value;
+        FormatData(inputData);
+    }
+
+    private void FormatData(string data)
+    {
+        inputData = data;
+        string? result;
+        string? error;
+
+        switch (selectedFormat)
+        {
+            case FormatType.Json:
+                result = DataFormatterService.FormatJson(data, out error, sortJsonKeys);
+                break;
+            default:
+                result = DataFormatterService.FormatData(data, selectedFormat, out error);
+                break;
+        }
+
+        if (result is null)
+        {
+            errorMessage = error;
+            formattedData = null;
+        }
+        else
+        {
+            errorMessage = null;
+            formattedData = result;
+        }
+    }
+}

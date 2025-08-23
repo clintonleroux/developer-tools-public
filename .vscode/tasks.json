@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Scaffold New Tool",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"src/DeveloperTools/Scaffold-Tool.ps1",
+				"-ToolName",
+				"${input:toolName}"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		}
+	],
+	"inputs": [
+		{
+			"id": "toolName",
+			"type": "promptString",
+			"description": "Enter the name of the new tool to scaffold"
+		}
+	]
+}
