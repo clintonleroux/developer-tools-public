@@ -141,9 +141,17 @@
 
     private async Task CopyOutputToClipboard()
     {
-        if (!string.IsNullOrEmpty(formattedData))
+        if (string.IsNullOrEmpty(formattedData)) return;
+
+        // Try ES module first; fall back to global function if present.
+        try
         {
-            await JS.InvokeVoidAsync("clipboardCopy.copyText", formattedData);
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/clipboard.module.js");
+            await module.InvokeVoidAsync("copyText", formattedData);
+        }
+        catch
+        {
+            try { await JS.InvokeVoidAsync("clipboardCopy.copyText", formattedData); } catch { }
         }
     }
 

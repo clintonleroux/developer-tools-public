@@ -200,9 +200,15 @@
 
 	private async Task CopyDiffToClipboard()
 	{
-		if (!string.IsNullOrEmpty(diffResult))
+		if (string.IsNullOrEmpty(diffResult)) return;
+		try
 		{
-			await JS.InvokeVoidAsync("clipboardCopy.copyText", diffResult);
+			var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/clipboard.module.js");
+			await module.InvokeVoidAsync("copyText", diffResult);
+		}
+		catch
+		{
+			try { await JS.InvokeVoidAsync("clipboardCopy.copyText", diffResult); } catch { }
 		}
 	}
 

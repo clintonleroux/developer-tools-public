@@ -98,9 +98,15 @@
 
     private async Task Copy()
     {
-        if (!string.IsNullOrEmpty(resultString))
+        if (string.IsNullOrEmpty(resultString)) return;
+        try
         {
-            await JS.InvokeVoidAsync("clipboardCopy.copyText", resultString);
+            var module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/clipboard.module.js");
+            await module.InvokeVoidAsync("copyText", resultString);
+        }
+        catch
+        {
+            try { await JS.InvokeVoidAsync("clipboardCopy.copyText", resultString); } catch { }
         }
     }
 
