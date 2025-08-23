@@ -100,7 +100,7 @@
     {
         if (!string.IsNullOrEmpty(resultString))
         {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", resultString);
+            await JS.InvokeVoidAsync("clipboardCopy.copyText", resultString);
         }
     }
 
