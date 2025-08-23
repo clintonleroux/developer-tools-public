@@ -1,0 +1,136 @@
+@using DeveloperTools
+@using static DeveloperTools.Pages.Tools.RandomNumberGenerator.RandomNumberGenerator
+@page "/RandomNumberGenerator"
+<PageTitle>Random Number Generator</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 0.75rem;">
+    <div style="display:flex; gap: 1rem; align-items:flex-end; flex-wrap: wrap;">
+        <div style="display:flex; flex-direction:column; gap: 0.25rem; min-width: 200px;">
+            <FluentLabel for="mode">Mode</FluentLabel>
+            <FluentSelect TOption="string" TValue="string" Id="mode" @bind-Value="mode">
+                <FluentOption TOption="string" Value="Digits">Digits</FluentOption>
+                <FluentOption TOption="string" Value="Range">Range</FluentOption>
+            </FluentSelect>
+        </div>
+
+        @if (mode == "Digits")
+        {
+            <div style="display:flex; flex-direction:column; gap: 0.25rem;">
+                <FluentLabel for="digitsValue">Digits</FluentLabel>
+                <FluentNumberField TValue="int" Id="digitsValue" @bind-Value="digits" Min="1" Max="10" Step="1" />
+            </div>
+        }
+        else
+        {
+            <div style="display:flex; flex-direction:column; gap: 0.25rem;">
+                <FluentLabel for="minValue">From</FluentLabel>
+                <FluentNumberField TValue="int" Id="minValue" @bind-Value="min" Step="1" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap: 0.25rem;">
+                <FluentLabel for="maxValue">To</FluentLabel>
+                <FluentNumberField TValue="int" Id="maxValue" @bind-Value="max" Step="1" />
+            </div>
+        }
+
+        <FluentButton OnClick="Generate" Appearance="Appearance.Accent">Generate</FluentButton>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <FluentMessageBar Intent="MessageIntent.Error">@errorMessage</FluentMessageBar>
+    }
+
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+        <FluentLabel>Result</FluentLabel>
+        <FluentTextField ReadOnly Value="@resultString" Style="width: 10rem;" />
+        <FluentButton Disabled="@string.IsNullOrEmpty(resultString)" OnClick="Copy">Copy</FluentButton>
+    </div>
+</FluentStack>
+
+@inject IJSRuntime JS
+
+@code {
+    private const string StoragePrefix = "RandomNumberGenerator.";
+    private const string StorageMode = StoragePrefix + "Mode";
+    private const string StorageDigits = StoragePrefix + "Digits";
+    private const string StorageMin = StoragePrefix + "Min";
+    private const string StorageMax = StoragePrefix + "Max";
+
+    private string mode = "Range";
+    private int digits = 3;
+    private int min = 1;
+    private int max = 100;
+    private int? result;
+    private string? errorMessage;
+
+    private string? resultString => result?.ToString();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var savedMode = await JS.InvokeAsync<string?>("localStorage.getItem", StorageMode);
+        if (!string.IsNullOrWhiteSpace(savedMode))
+        {
+            mode = savedMode!;
+        }
+
+        var savedDigits = await JS.InvokeAsync<string?>("localStorage.getItem", StorageDigits);
+        if (int.TryParse(savedDigits, out var d))
+        {
+            digits = Math.Clamp(d, 1, 10);
+        }
+
+        var savedMin = await JS.InvokeAsync<string?>("localStorage.getItem", StorageMin);
+        if (int.TryParse(savedMin, out var m))
+        {
+            min = m;
+        }
+
+        var savedMax = await JS.InvokeAsync<string?>("localStorage.getItem", StorageMax);
+        if (int.TryParse(savedMax, out var x))
+        {
+            max = x;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task Copy()
+    {
+        if (!string.IsNullOrEmpty(resultString))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", resultString);
+        }
+    }
+
+    private void Generate()
+    {
+        _ = JS.InvokeVoidAsync("localStorage.setItem", StorageMode, mode);
+        _ = JS.InvokeVoidAsync("localStorage.setItem", StorageDigits, digits.ToString());
+        _ = JS.InvokeVoidAsync("localStorage.setItem", StorageMin, min.ToString());
+        _ = JS.InvokeVoidAsync("localStorage.setItem", StorageMax, max.ToString());
+
+        int? value;
+        string? error;
+        if (mode == "Digits")
+        {
+            value = GenerateRandomDigits(digits, out error);
+        }
+        else
+        {
+            value = GenerateRandom(min, max, out error);
+        }
+
+        if (value.HasValue)
+        {
+            errorMessage = null;
+            result = value.Value;
+        }
+        else
+        {
+            errorMessage = error;
+            result = null;
+        }
+    }
+}
