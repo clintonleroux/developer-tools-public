@@ -4,9 +4,9 @@
 @page "/DataFormatter"
 <PageTitle>Data Formatter</PageTitle>
 
-<FluentStack Orientation="Orientation.Vertical" Style="gap: 0.5rem;">
-    <div style="display:flex; gap: 0.75rem; align-items:center; flex-wrap: wrap;">
-    <FluentSelect TOption="string" @bind-Value="selectedFormatString">
+<FluentStack Orientation="Orientation.Vertical" Style="gap: 0.5rem; width: 100%; min-width: 0; overflow: visible;">
+    <div style="display:flex; gap: 0.75rem; align-items:center; flex-wrap: wrap; position:relative; width:100%; min-width:0;">
+    <FluentSelect TOption="string" @bind-Value="selectedFormatString" Style="flex:1 1 0; min-width:0;">
             <FluentOption TOption="string" Value="Json">Json</FluentOption>
             <FluentOption TOption="string" Value="Xml">XML</FluentOption>
             <FluentOption TOption="string" Value="Yaml">YAML</FluentOption>
@@ -39,13 +39,13 @@
     }
 
     <FluentStack Orientation="Orientation.Horizontal" Style="gap: 3em; align-items: stretch; min-height: 0; height: auto;">
-        <div style="width: 33.33vw; min-width: 200px; height: 100%; display: flex; flex-direction: column; align-items: flex-start;">
+    <div style="flex: 1 1 0; min-width: 200px; height: auto; display: flex; flex-direction: column; align-items: flex-start;">
             <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; height:3vh">
                 <FluentLabel for="DataInput">Input</FluentLabel>
             </div>
             <NumberedTextArea Id="DataInput" Name="DataInput" Value="@inputData" OnInput="@(v => FormatData(v))"/>
         </div>
-        <div style="width: 33.33vw; min-width: 200px; height: 100%; display: flex; flex-direction: column; align-items: flex-start;">
+    <div style="flex: 1 1 0; min-width: 200px; height: auto; display: flex; flex-direction: column; align-items: flex-start;">
             <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; height: 3vh">
                 <FluentLabel for="DataOutput">Output</FluentLabel>
             </div>
@@ -53,6 +53,7 @@
         </div>
     </FluentStack>
 </FluentStack>
+
 
 @inject IJSRuntime JS
 
