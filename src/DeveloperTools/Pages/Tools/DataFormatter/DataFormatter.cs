@@ -25,13 +25,14 @@ public class DataFormatter
         };
     }
 
-    public string? FormatJson(string json, out string? errorMessage, bool sortKeys = false, bool minify = false)
+    public string? FormatJson(string json, out string? errorMessage, bool sortKeys = false, bool minify = false, int indentSize = 2)
     {
         try
         {
             var options = new JsonSerializerOptions
             {
                 WriteIndented = !minify,
+                IndentSize = indentSize
             };
             using var document = JsonDocument.Parse(json);
             errorMessage = null;

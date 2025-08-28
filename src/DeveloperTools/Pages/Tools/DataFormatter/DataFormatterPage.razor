@@ -16,16 +16,19 @@
         </FluentSelect>
 
     @if (selectedFormat == FormatType.Json)
-        {
-            <div style="display:flex; gap: 1rem; align-items:center;">
-        <FluentSwitch @bind-Value="sortJsonKeys">
-                    <span>Sort Keys</span>
-                </FluentSwitch>
-        <FluentSwitch @bind-Value="minifyJson">
-                    <span>Minify</span>
-                </FluentSwitch>
-            </div>
-        }
+    {
+        <div style="display:flex; gap: 1rem; align-items:center;">
+            <FluentSwitch @bind-Value="sortJsonKeys">
+                <span>Sort Keys</span>
+            </FluentSwitch>
+            <FluentSwitch @bind-Value="minifyJson">
+                <span>Minify</span>
+            </FluentSwitch>
+            <FluentNumberField Style="width: 7em;" Min="1" Max="8" Step="1" @bind-Value="jsonIndentSize" Disabled="@minifyJson">
+                <span>Indent Size</span>
+            </FluentNumberField>
+        </div>
+    }
 
         <div style="margin-left:auto; display:flex; gap: 0.5rem;">
             <FluentButton OnClick="ClearInput">Clear</FluentButton>
@@ -63,6 +66,7 @@
     private const string StorageFormat = StoragePrefix + "SelectedFormat";
     private const string StorageSort = StoragePrefix + "SortKeys";
     private const string StorageMinify = StoragePrefix + "Minify";
+    private const string StorageIndent = StoragePrefix + "IndentSize";
 
     private string inputData = string.Empty;
     private FormatType selectedFormat = FormatType.Json;
@@ -80,6 +84,23 @@
     private string? errorMessage = null;
     private bool _sortJsonKeys = false;
     private bool _minifyJson = false;
+    private int _jsonIndentSize = 2;
+    private int jsonIndentSize
+    {
+        get => _jsonIndentSize;
+        set
+        {
+            int newValue = value;
+            if (newValue < 1 || newValue > 8) newValue = 2;
+            if (_jsonIndentSize == newValue) {
+                FormatData(inputData);
+                return;
+            }
+            _jsonIndentSize = newValue;
+            _ = JS.InvokeVoidAsync("localStorage.setItem", StorageIndent, _jsonIndentSize.ToString());
+            FormatData(inputData);
+        }
+    }
 
     private bool sortJsonKeys
     {
@@ -136,6 +157,11 @@
             inputData = savedInput;
         }
 
+        var savedIndent = await JS.InvokeAsync<string?>("localStorage.getItem", StorageIndent);
+        if (int.TryParse(savedIndent, out var indent))
+        {
+            _jsonIndentSize = indent;
+        }
         FormatData(inputData);
         StateHasChanged();
     }
@@ -176,7 +202,7 @@
         switch (selectedFormat)
         {
             case FormatType.Json:
-                result = DataFormatterService.FormatJson(data, out error, sortJsonKeys, minifyJson);
+                result = DataFormatterService.FormatJson(data, out error, sortJsonKeys, minifyJson, jsonIndentSize);
                 break;
             default:
                 result = DataFormatterService.FormatData(data, selectedFormat, out error);
