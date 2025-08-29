@@ -24,9 +24,8 @@
             <FluentSwitch @bind-Value="minifyJson">
                 <span>Minify</span>
             </FluentSwitch>
-            <FluentNumberField Style="width: 7em;" Min="1" Max="8" Step="1" @bind-Value="jsonIndentSize" Disabled="@minifyJson">
-                <span>Indent Size</span>
-            </FluentNumberField>
+            <span style="margin-right: 0.5em;">Indent Size</span>
+            <FluentNumberField Style="width: 7em;" Min="1" Max="8" Step="1" @bind-Value="jsonIndentSize" Disabled="@minifyJson" />
         </div>
     }
 
