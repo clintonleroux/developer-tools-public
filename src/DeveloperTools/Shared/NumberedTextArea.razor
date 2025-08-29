@@ -51,7 +51,7 @@
     {
         var str = text ?? string.Empty;
         var lineCount = str.Split('\n').Length;
-        return Math.Max(lineCount, 3);
+        return Math.Max(lineCount + 1, 3);
     }
     private IEnumerable<int> GetLineNumbers(string? text)
     {

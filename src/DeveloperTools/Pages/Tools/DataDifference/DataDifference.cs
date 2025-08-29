@@ -18,8 +18,7 @@ namespace DeveloperTools.Pages.Tools.DataDifference
             string right,
             bool ignoreCase,
             bool ignoreWhitespace,
-            bool trimLines,
-            bool showUnchanged)
+            bool trimLines)
         {
             var leftLinesRaw = (left ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
             var rightLinesRaw = (right ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
@@ -52,14 +51,6 @@ namespace DeveloperTools.Pages.Tools.DataDifference
                 switch (op)
                 {
                     case DiffOp.Equal:
-                        if (showUnchanged)
-                        {
-                            if (i < leftLinesRaw.Length)
-                            {
-                                sb.AppendLine($"  {leftLinesRaw[i]}");
-                                lines.Add(new DiffLine($"  {leftLinesRaw[i]}", DiffKind.Equal));
-                            }
-                        }
                         i++; j++;
                         break;
                     case DiffOp.Delete:
@@ -87,8 +78,7 @@ namespace DeveloperTools.Pages.Tools.DataDifference
             JsonElement left,
             JsonElement right,
             bool pretty,
-            bool sortProps,
-            bool showUnchanged)
+            bool sortProps)
         {
             var sb = new StringBuilder();
             var lines = new List<DiffLine>();
@@ -141,11 +131,6 @@ namespace DeveloperTools.Pages.Tools.DataDifference
                             {
                                 Diff(lv, rv, sub);
                             }
-                            else if (showUnchanged)
-                            {
-                                var v = ValToString(lv);
-                                Add(" ", sub, v, DiffKind.Equal);
-                            }
                         }
                         else if (hasL)
                         {
@@ -173,10 +158,6 @@ namespace DeveloperTools.Pages.Tools.DataDifference
                             {
                                 Diff(la[idx], ra[idx], sub);
                             }
-                            else if (showUnchanged)
-                            {
-                                Add(" ", sub, ValToString(la[idx]), DiffKind.Equal);
-                            }
                         }
                         else if (hasL)
                         {
@@ -192,10 +173,6 @@ namespace DeveloperTools.Pages.Tools.DataDifference
                 {
                     Add("-", path, ValToString(l), DiffKind.Removed);
                     Add("+", path, ValToString(r), DiffKind.Added);
-                }
-                else if (showUnchanged)
-                {
-                    Add(" ", path, ValToString(l), DiffKind.Equal);
                 }
             }
 
